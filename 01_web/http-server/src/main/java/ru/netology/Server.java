@@ -29,6 +29,9 @@ public class Server extends Thread{
         try {
             while (true) {
                 clientSocket = serverSocket.accept();
+                // Подключения обрабатываются по мере поступления
+                // поэтому не вижу причины использовать ThreadPool
+                // если не прав, поясните, пожалуйста, смысл использования ThreadPool в этой логике программы
                 ClientHandler client = new ClientHandler(clientSocket, this);
                 new Thread(client).start();
             }
