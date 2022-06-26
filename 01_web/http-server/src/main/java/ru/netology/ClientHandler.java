@@ -57,7 +57,7 @@ public class ClientHandler implements Runnable {
 
     private String getHeaderForAnswer(String kod, String contentType, String length) {
         return responseHeaderTemplate.replaceAll("&responseKod", kod)
-                .replaceAll("&&responseContentType", contentType)
+                .replaceAll("&responseContentType", contentType)
                 .replaceAll("&responseLength", length);
     }
 
