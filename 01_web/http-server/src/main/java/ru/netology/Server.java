@@ -4,12 +4,16 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server extends Thread{
     public final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
     public static final String RESOURCE_DIR = "01_web\\http-server\\public";
     private static ServerSocket serverSocket = null;
     public static final int DEFAULT_PORT = 23445; //9999;
+
+    private static ExecutorService executorService = Executors.newFixedThreadPool(64);
 
     Server(int port){
         try {
@@ -29,15 +33,14 @@ public class Server extends Thread{
         try {
             while (true) {
                 clientSocket = serverSocket.accept();
-                // Подключения обрабатываются по мере поступления
-                // поэтому не вижу причины использовать ThreadPool
-                // если не прав, поясните, пожалуйста, смысл использования ThreadPool в этой логике программы
-                ClientHandler client = new ClientHandler(clientSocket, this);
-                new Thread(client).start();
+                executorService.execute(new ClientHandler(clientSocket, this));
             }
         } catch (IOException ex) {
             System.out.println("Ошибка при установке соединения с сервером.");
             ex.printStackTrace(System.out);
+        }
+        finally {
+            executorService.shutdown();
         }
     }
 }
