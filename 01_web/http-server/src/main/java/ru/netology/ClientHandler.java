@@ -35,7 +35,11 @@ public class ClientHandler implements Runnable {
         StringBuilder builder = new StringBuilder();
         String ln = null;
         while (true) {
-            ln = reader.readLine();
+            try {
+                ln = reader.readLine();
+            } catch (IOException ex) {
+                break;
+            }
             if (ln == null || ln.isEmpty()) {
                 break;
             }
@@ -65,32 +69,35 @@ public class ClientHandler implements Runnable {
     public void run() {
         try {
             BufferedOutputStream outBuffer = new BufferedOutputStream(outputStream);
-            final String path = getURIFromHeader(readHeader());
-            if (!server.validPaths.contains(path)) {
-                outBuffer.write(getHeaderForAnswer(KOD_404_NOT_FOUND, "", "0").getBytes());
+            String header = readHeader();
+            if (!header.isEmpty()) {
+                final String path = getURIFromHeader(header);
+                if (!server.validPaths.contains(path)) {
+                    outBuffer.write(getHeaderForAnswer(KOD_404_NOT_FOUND, "", "0").getBytes());
+                    outBuffer.flush();
+                    return;
+                }
+
+                final Path filePath = Path.of(server.RESOURCE_DIR + path);
+                final String mimeType = Files.probeContentType(filePath);
+
+                if (path.equals("/classic.html")) {
+                    final var template = Files.readString(filePath);
+                    final var content = template.replace(
+                            "{time}",
+                            LocalDateTime.now().toString()
+                    ).getBytes();
+                    outBuffer.write(getHeaderForAnswer(KOD_200_OK, mimeType, Integer.toString(content.length)).getBytes());
+                    outBuffer.write(content);
+                    outBuffer.flush();
+                    return;
+                }
+
+                final Long length = Files.size(filePath);
+                outBuffer.write(getHeaderForAnswer(KOD_200_OK, mimeType, Long.toString(length)).getBytes());
+                Files.copy(filePath, outBuffer);
                 outBuffer.flush();
-                return;
             }
-
-            final Path filePath = Path.of(server.RESOURCE_DIR + path);
-            final String mimeType = Files.probeContentType(filePath);
-
-            if (path.equals("/classic.html")) {
-                final var template = Files.readString(filePath);
-                final var content = template.replace(
-                        "{time}",
-                        LocalDateTime.now().toString()
-                ).getBytes();
-                outBuffer.write(getHeaderForAnswer(KOD_200_OK, mimeType, Integer.toString(content.length)).getBytes());
-                outBuffer.write(content);
-                outBuffer.flush();
-                return;
-            }
-
-            final Long length = Files.size(filePath);
-            outBuffer.write(getHeaderForAnswer(KOD_200_OK, mimeType, Long.toString(length)).getBytes());
-            Files.copy(filePath, outBuffer);
-            outBuffer.flush();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
